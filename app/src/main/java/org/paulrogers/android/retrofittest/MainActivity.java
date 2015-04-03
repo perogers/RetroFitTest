@@ -8,10 +8,10 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
-import retrofit.Callback;
+import retrofit.RestAdapter;
 import retrofit.http.GET;
-import retrofit.http.Query;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -19,7 +19,7 @@ public class MainActivity extends ActionBarActivity {
     private final static String TAG = "MainActivity";
 
     EditText mUrlText;
-    String mUrl;
+    String mEndpoint;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,14 +33,31 @@ public class MainActivity extends ActionBarActivity {
             @Override
             public void onClick(View view) {
                 Log.d(TAG, "Click!");
-                mUrl = mUrlText.getText().toString();
-                Log.d(TAG, "Got URL: " + mUrl);
+                mEndpoint = mUrlText.getText().toString();
+                Log.d(TAG, "Got URL: " + mEndpoint);
+                testRetroCall();
             }
         });
 
 
 
 
+
+
+    }
+
+    private void testRetroCall() {
+        try {
+            RestAdapter restAdapter;
+            restAdapter = new RestAdapter.Builder().setEndpoint(mEndpoint).build();
+
+            DoorImageService service = restAdapter.create(DoorImageService.class);
+            restAdapter.setLogLevel(RestAdapter.LogLevel.FULL);
+            Object image = service.getImage();
+        }
+        catch (Exception e) {
+            Toast.makeText(this, "Failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
 
 
     }
@@ -67,13 +84,15 @@ public class MainActivity extends ActionBarActivity {
 
         return super.onOptionsItemSelected(item);
     }
+
+    interface DoorImageService {
+        // http://71.236.0.176/door/camera?foo=bar
+        // asynchronously with a callback
+        @GET("/door/camera")
+        Object getImage();
+
+
+    }
 }
 
-interface RetrofitInterface {
-// http://71.236.0.176/door/camera?foo=bar
-    // asynchronously with a callback
-    @GET("/door/camera")
-    Object getImage(@Query("foo") String userId, Callback<Object> callback);
 
-
-}
