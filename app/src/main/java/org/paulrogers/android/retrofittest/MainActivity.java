@@ -11,7 +11,9 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import retrofit.RestAdapter;
+import retrofit.client.Response;
 import retrofit.http.GET;
+import retrofit.http.Streaming;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -19,6 +21,7 @@ public class MainActivity extends ActionBarActivity {
     private final static String TAG = "MainActivity";
 
     EditText mUrlText;
+    EditText mApiText;
     String mEndpoint;
 
     @Override
@@ -27,6 +30,7 @@ public class MainActivity extends ActionBarActivity {
         setContentView(R.layout.activity_main);
 
         mUrlText = (EditText) findViewById(R.id.url_text);
+        mApiText = (EditText) findViewById(R.id.api_text);
 
         Button urlButton = (Button) findViewById(R.id.fetch_button);
         urlButton.setOnClickListener(new View.OnClickListener() {
@@ -53,7 +57,8 @@ public class MainActivity extends ActionBarActivity {
 
             DoorImageService service = restAdapter.create(DoorImageService.class);
             restAdapter.setLogLevel(RestAdapter.LogLevel.FULL);
-            Object image = service.getImage();
+            Response image = service.getImage();
+            Log.d(TAG, "Hello world!");
         }
         catch (Exception e) {
             Toast.makeText(this, "Failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -88,9 +93,9 @@ public class MainActivity extends ActionBarActivity {
     interface DoorImageService {
         // http://71.236.0.176/door/camera?foo=bar
         // asynchronously with a callback
-        @GET("/door/camera")
-        Object getImage();
-
+        @GET("/static/garage/image.jpg")
+        @Streaming
+        Response getImage();
 
     }
 }
