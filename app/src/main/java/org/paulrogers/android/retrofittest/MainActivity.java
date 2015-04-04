@@ -1,5 +1,7 @@
 package org.paulrogers.android.retrofittest;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
@@ -8,12 +10,19 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+
+import retrofit.ErrorHandler;
 import retrofit.RestAdapter;
+import retrofit.RetrofitError;
 import retrofit.client.Response;
 import retrofit.http.GET;
 import retrofit.http.Streaming;
+import retrofit.mime.TypedInput;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -23,6 +32,7 @@ public class MainActivity extends ActionBarActivity {
     EditText mUrlText;
     EditText mApiText;
     String mEndpoint;
+    ImageView mImageView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,7 +53,7 @@ public class MainActivity extends ActionBarActivity {
             }
         });
 
-
+        mImageView = (ImageView) findViewById(R.id.imageView);
 
 
 
@@ -51,17 +61,54 @@ public class MainActivity extends ActionBarActivity {
     }
 
     private void testRetroCall() {
+        InputStream in = null;
         try {
             RestAdapter restAdapter;
-            restAdapter = new RestAdapter.Builder().setEndpoint(mEndpoint).build();
+            Log.d(TAG, "Creating RestAdapter.Builder(), setting endpoint & calling build");
+            restAdapter = new RestAdapter.Builder().setEndpoint(mEndpoint)
+                    .setErrorHandler(new ErrorHandler() {
+                        @Override
+                        public Throwable handleError(RetrofitError cause) {
+                            String message = "Failed due to " + cause.getMessage();
+                            Log.e(TAG, message);
+                            //Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                            return new Throwable( message );
+                        }
+                    })
+                    .build();
 
+            Log.d(TAG, "Creating DoorImageService");
             DoorImageService service = restAdapter.create(DoorImageService.class);
-            restAdapter.setLogLevel(RestAdapter.LogLevel.FULL);
-            Response image = service.getImage();
+            restAdapter.setLogLevel(RestAdapter.LogLevel.BASIC);
+
+
+            Log.d(TAG, "Calling getImage");
+
+            Response response = service.getImage();
+            Log.d(TAG, "Got response");
+            if( response == null  ) {
+                Toast.makeText(this, "Failed: No data returned", Toast.LENGTH_LONG).show();
+                return;
+            }
+            TypedInput responseBody = response.getBody();
+            in = responseBody.in();
+            byte[] data = new byte[1024];
+            int len = 0;
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            while ( (len = in.read(data)) != -1 ) {
+                bos.write(data, 0, len);
+            }
+            byte[] imageBytes = bos.toByteArray();
+            Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+            mImageView.setImageBitmap( bitmap );
+
             Log.d(TAG, "Hello world!");
         }
         catch (Exception e) {
             Toast.makeText(this, "Failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+        finally {
+            try { in.close(); } catch (Exception ignore){}
         }
 
 
