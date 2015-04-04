@@ -46,7 +46,6 @@ public class MainActivity extends ActionBarActivity {
         urlButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Log.d(TAG, "Click!");
                 mEndpoint = mUrlText.getText().toString();
                 Log.d(TAG, "Got URL: " + mEndpoint);
                 testRetroCall();
@@ -55,64 +54,77 @@ public class MainActivity extends ActionBarActivity {
 
         mImageView = (ImageView) findViewById(R.id.imageView);
 
-
-
-
     }
 
-    private void testRetroCall() {
-        InputStream in = null;
-        try {
-            RestAdapter restAdapter;
-            Log.d(TAG, "Creating RestAdapter.Builder(), setting endpoint & calling build");
-            restAdapter = new RestAdapter.Builder().setEndpoint(mEndpoint)
-                    .setErrorHandler(new ErrorHandler() {
+
+
+    private void testRetroCall( ){
+        new Thread( new Runnable() {
+            @Override
+            public void run() {
+                InputStream in = null;
+
+                try {
+                    RestAdapter restAdapter;
+                    Log.d(TAG, "Creating RestAdapter.Builder(), setting endpoint & calling build");
+                    restAdapter = new RestAdapter.Builder().setEndpoint(mEndpoint)
+                            .setErrorHandler(new ErrorHandler() {
+                                @Override
+                                public Throwable handleError(RetrofitError cause) {
+                                    String message = "Failed due to " + cause.getMessage();
+                                    Log.e(TAG, message);
+                                    return new DoorImageServiceException();
+                                }
+                            })
+                            .build();
+
+                    DoorImageService service = restAdapter.create(DoorImageService.class);
+                    restAdapter.setLogLevel(RestAdapter.LogLevel.BASIC);
+                    Response response = service.getImage();
+                    TypedInput responseBody = response.getBody();
+                    in = responseBody.in();
+                    byte[] data = new byte[1024];
+                    int len = 0;
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                    while ((len = in.read(data)) != -1) {
+                        bos.write(data, 0, len);
+                    }
+                    byte[] imageBytes = bos.toByteArray();
+                    final Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+
+                    // Post a runnable with the bitmap
+                    mImageView.post(new Runnable() {
                         @Override
-                        public Throwable handleError(RetrofitError cause) {
-                            String message = "Failed due to " + cause.getMessage();
-                            Log.e(TAG, message);
-                            //Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
-                            return new Throwable( message );
+                        public void run() {
+                            mImageView.setImageBitmap(bitmap);
                         }
-                    })
-                    .build();
+                    });
 
-            Log.d(TAG, "Creating DoorImageService");
-            DoorImageService service = restAdapter.create(DoorImageService.class);
-            restAdapter.setLogLevel(RestAdapter.LogLevel.BASIC);
+                }
 
 
-            Log.d(TAG, "Calling getImage");
-
-            Response response = service.getImage();
-            Log.d(TAG, "Got response");
-            if( response == null  ) {
-                Toast.makeText(this, "Failed: No data returned", Toast.LENGTH_LONG).show();
-                return;
-            }
-            TypedInput responseBody = response.getBody();
-            in = responseBody.in();
-            byte[] data = new byte[1024];
-            int len = 0;
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            while ( (len = in.read(data)) != -1 ) {
-                bos.write(data, 0, len);
-            }
-            byte[] imageBytes = bos.toByteArray();
-            Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-            mImageView.setImageBitmap( bitmap );
-
-            Log.d(TAG, "Hello world!");
+                catch (Exception e) {
+                    final String msg = e.getMessage();
+                    MainActivity.this.runOnUiThread( new Runnable() {
+                                                         @Override
+                                                         public void run() {
+                                                             Toast t = Toast.makeText(MainActivity.this,
+                                                                     "Failed: " + msg,
+                                                                     Toast.LENGTH_LONG);
+                                                             t.show();
+                                                         } });
+                    Log.e(TAG, "Failed: " + e.getMessage(),e);
+                }
+                finally {
+                    try { in.close(); } catch (Exception ignore){}
+                }
         }
-        catch (Exception e) {
-            Toast.makeText(this, "Failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        }
-        finally {
-            try { in.close(); } catch (Exception ignore){}
-        }
-
+        }).start();
 
     }
+
+
+
 
 
     @Override
@@ -142,9 +154,17 @@ public class MainActivity extends ActionBarActivity {
         // asynchronously with a callback
         @GET("/static/garage/image.jpg")
         @Streaming
-        Response getImage();
+        Response getImage() throws DoorImageServiceException;
 
     }
+
+
+
+    class DoorImageServiceException extends Exception {
+        @Override
+        public String getMessage() {return "request timed out"; };
+    }
+
 }
 
 
