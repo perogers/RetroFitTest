@@ -30,7 +30,6 @@ public class MainActivity extends ActionBarActivity {
     private final static String TAG = "MainActivity";
 
     EditText mUrlText;
-    EditText mApiText;
     String mEndpoint;
     ImageView mImageView;
 
@@ -40,7 +39,6 @@ public class MainActivity extends ActionBarActivity {
         setContentView(R.layout.activity_main);
 
         mUrlText = (EditText) findViewById(R.id.url_text);
-        mApiText = (EditText) findViewById(R.id.api_text);
 
         Button urlButton = (Button) findViewById(R.id.fetch_button);
         urlButton.setOnClickListener(new View.OnClickListener() {
