@@ -2,6 +2,7 @@ package org.paulrogers.android.retrofittest;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
@@ -88,7 +89,14 @@ public class MainActivity extends ActionBarActivity {
                         bos.write(data, 0, len);
                     }
                     byte[] imageBytes = bos.toByteArray();
-                    final Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+                    Bitmap source = BitmapFactory.decodeByteArray(imageBytes, 0,
+                                                                        imageBytes.length);
+                    Matrix matrix = new Matrix();
+                    matrix.postRotate(180.0F);
+                    final Bitmap bitmap = Bitmap.createBitmap(source, 0, 0,
+                                                        source.getWidth(),
+                                                        source.getHeight(), matrix, true);
+
 
                     // Post a runnable with the bitmap
                     mImageView.post(new Runnable() {
@@ -99,17 +107,15 @@ public class MainActivity extends ActionBarActivity {
                     });
 
                 }
-
-
                 catch (Exception e) {
                     final String msg = e.getMessage();
                     MainActivity.this.runOnUiThread( new Runnable() {
                                                          @Override
                                                          public void run() {
-                                                             Toast t = Toast.makeText(MainActivity.this,
-                                                                     "Failed: " + msg,
-                                                                     Toast.LENGTH_LONG);
-                                                             t.show();
+                                         Toast t = Toast.makeText(MainActivity.this,
+                                                 "Failed: " + msg,
+                                                 Toast.LENGTH_LONG);
+                                         t.show();
                                                          } });
                     Log.e(TAG, "Failed: " + e.getMessage(),e);
                 }
