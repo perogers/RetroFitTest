@@ -78,8 +78,17 @@ public class MainActivity extends ActionBarActivity {
                             .build();
 
                     DoorImageService service = restAdapter.create(DoorImageService.class);
-                    restAdapter.setLogLevel(RestAdapter.LogLevel.BASIC);
+                    restAdapter.setLogLevel(RestAdapter.LogLevel.FULL);
+
+                    MainActivity.this.runOnUiThread( new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this, "Starting to download", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
                     Response response = service.getImage();
+
                     TypedInput responseBody = response.getBody();
                     in = responseBody.in();
                     byte[] data = new byte[1024];
@@ -103,6 +112,7 @@ public class MainActivity extends ActionBarActivity {
                         @Override
                         public void run() {
                             mImageView.setImageBitmap(bitmap);
+                            Toast.makeText(MainActivity.this, "Download completed", Toast.LENGTH_SHORT).show();
                         }
                     });
 
