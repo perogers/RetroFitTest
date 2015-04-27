@@ -33,6 +33,7 @@ public class MainActivity extends ActionBarActivity {
     EditText mUrlText;
     String mEndpoint;
     ImageView mImageView;
+    ImageProxy mImageProxy;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +53,12 @@ public class MainActivity extends ActionBarActivity {
         });
 
         mImageView = (ImageView) findViewById(R.id.imageView);
+
+        mImageProxy = ImageProxy.getInstance(getApplicationContext());
+        Bitmap bm = mImageProxy.getBitmap();
+        if( bm != null) {
+            mImageView.setImageBitmap( bm );
+        }
 
     }
 
@@ -112,6 +119,7 @@ public class MainActivity extends ActionBarActivity {
                         @Override
                         public void run() {
                             mImageView.setImageBitmap(bitmap);
+                            mImageProxy.setBitmap( bitmap );
                             Toast.makeText(MainActivity.this, "Download completed", Toast.LENGTH_SHORT).show();
                         }
                     });
