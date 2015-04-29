@@ -23,7 +23,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#ffdddddd"
-        android:padding="10dp"/>
+        android:padding="16dp"/>
+
+
 
     <ImageView
         android:layout_width="match_parent"
