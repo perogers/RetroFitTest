@@ -1,10 +1,9 @@
 package org.paulrogers.android.retrofittest;
 
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -14,139 +13,128 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 
-import retrofit.ErrorHandler;
-import retrofit.RestAdapter;
-import retrofit.RetrofitError;
-import retrofit.client.Response;
-import retrofit.http.GET;
-import retrofit.http.Streaming;
-import retrofit.mime.TypedInput;
-
-
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends FragmentActivity implements DownloadFragment.DownloadResultsListener {
 
     private final static String TAG = "MainActivity";
 
-    EditText mUrlText;
-    String mEndpoint;
-    ImageView mImageView;
-    ImageProxy mImageProxy;
+    private static final String DOWNLOAD_FRAGMENT_TAG = "download-fragment";
+
+    private static final String IS_DOWNLOADING_TAG = "is-downloading";
+
+
+    private boolean mDownloading = false;
+
+    private EditText mUrlText;
+    private String mEndpoint;
+    private ImageView mImageView;
+    private Button mFetchButton;
+    private ImageProxy mImageProxy;
+    private DownloadFragment mDownloadFragment;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d(TAG, "onCreate");
         setContentView(R.layout.activity_main);
 
         mUrlText = (EditText) findViewById(R.id.url_text);
 
-        Button urlButton = (Button) findViewById(R.id.fetch_button);
-        urlButton.setOnClickListener(new View.OnClickListener() {
+        mFetchButton = (Button) findViewById(R.id.fetch_button);
+        mFetchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mEndpoint = mUrlText.getText().toString();
-                Log.d(TAG, "Got URL: " + mEndpoint);
-                testRetroCall();
+                doImageDownload();
             }
         });
 
         mImageView = (ImageView) findViewById(R.id.imageView);
-
         mImageProxy = ImageProxy.getInstance(getApplicationContext());
-        Bitmap bm = mImageProxy.getBitmap();
-        if( bm != null) {
-            mImageView.setImageBitmap( bm );
+        if ( mImageProxy.getBitmap() != null ) {
+            mImageView.setImageBitmap( mImageProxy.getBitmap());
+        }
+
+        loadDownloadFragment();
+    }
+
+    /**
+     * Request image download
+     */
+    private void doImageDownload() {
+        mEndpoint = mUrlText.getText().toString();
+        Log.d(TAG, "Downloading " + mEndpoint);
+        Toast.makeText(MainActivity.this, "Starting to download", Toast.LENGTH_SHORT).show();
+        mDownloading = true;
+        mFetchButton.setEnabled( false );
+        mDownloadFragment.requestDownload(mUrlText.getText().toString());
+    }
+
+
+    /**
+     * Load the fragment that will handle download requsts
+     */
+    private void loadDownloadFragment() {
+        if( mDownloadFragment == null ) {
+            Log.d(TAG, "Fragment is null, try to get from frag mgr");
+            FragmentManager fm = getSupportFragmentManager();
+            mDownloadFragment = (DownloadFragment) fm.findFragmentByTag(DOWNLOAD_FRAGMENT_TAG);
+            if (mDownloadFragment == null) {
+                Log.d(TAG, "Fragment is null, creating new one");
+                mDownloadFragment = new DownloadFragment();
+
+                fm.beginTransaction().add(mDownloadFragment, DOWNLOAD_FRAGMENT_TAG).commit();
+            }
+        }
+    }
+
+
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        if( savedInstanceState != null ) {
+            mDownloading = savedInstanceState.getBoolean(IS_DOWNLOADING_TAG);
+            Log.d(TAG, "On restore instance state - downloading: " + mDownloading);
+            if( mDownloading ) {
+                mFetchButton.setEnabled( false );
+            }
+            else {
+                mFetchButton.setEnabled( true );
+            }
         }
 
     }
 
 
-
-    private void testRetroCall( ){
-        new Thread( new Runnable() {
-            @Override
-            public void run() {
-                InputStream in = null;
-
-                try {
-                    RestAdapter restAdapter;
-                    Log.d(TAG, "Creating RestAdapter.Builder(), setting endpoint & calling build");
-                    restAdapter = new RestAdapter.Builder().setEndpoint(mEndpoint)
-                            .setErrorHandler(new ErrorHandler() {
-                                @Override
-                                public Throwable handleError(RetrofitError cause) {
-                                    String message = "Failed due to " + cause.getMessage();
-                                    Log.e(TAG, message);
-                                    return new DoorImageServiceException();
-                                }
-                            })
-                            .build();
-
-                    DoorImageService service = restAdapter.create(DoorImageService.class);
-                    restAdapter.setLogLevel(RestAdapter.LogLevel.FULL);
-
-                    MainActivity.this.runOnUiThread( new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(MainActivity.this, "Starting to download", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-
-                    Response response = service.getImage();
-
-                    TypedInput responseBody = response.getBody();
-                    in = responseBody.in();
-                    byte[] data = new byte[1024];
-                    int len = 0;
-                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                    while ((len = in.read(data)) != -1) {
-                        bos.write(data, 0, len);
-                    }
-                    byte[] imageBytes = bos.toByteArray();
-                    Bitmap source = BitmapFactory.decodeByteArray(imageBytes, 0,
-                                                                        imageBytes.length);
-                    Matrix matrix = new Matrix();
-                    matrix.postRotate(180.0F);
-                    final Bitmap bitmap = Bitmap.createBitmap(source, 0, 0,
-                                                        source.getWidth(),
-                                                        source.getHeight(), matrix, true);
-
-
-                    // Post a runnable with the bitmap
-                    mImageView.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            mImageView.setImageBitmap(bitmap);
-                            mImageProxy.setBitmap( bitmap );
-                            Toast.makeText(MainActivity.this, "Download completed", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-
-                }
-                catch (Exception e) {
-                    final String msg = e.getMessage();
-                    MainActivity.this.runOnUiThread( new Runnable() {
-                                                         @Override
-                                                         public void run() {
-                                         Toast t = Toast.makeText(MainActivity.this,
-                                                 "Failed: " + msg,
-                                                 Toast.LENGTH_LONG);
-                                         t.show();
-                                                         } });
-                    Log.e(TAG, "Failed: " + e.getMessage(),e);
-                }
-                finally {
-                    try { in.close(); } catch (Exception ignore){}
-                }
-        }
-        }).start();
-
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        Log.d(TAG, "On save instance state - downloading: " + mDownloading);
+        outState.putBoolean(IS_DOWNLOADING_TAG, mDownloading);
     }
 
 
-
+    @Override
+    public void setResults(DownloadFragment.DownloadResults downloadResults) {
+        mDownloading = false;
+        mFetchButton.setEnabled( true );
+        if( !downloadResults.isSuccess() ) {
+            Toast.makeText(MainActivity.this,
+                    "Failed: " + downloadResults.getErrorMessage(),
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        Toast.makeText(this, "Download completed", Toast.LENGTH_SHORT).show();
+        Bitmap bm = downloadResults.getBitmap();
+        if( bm == null ) {
+            Toast.makeText(this, "Download failed - no image returned!",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        mImageView.setImageBitmap( bm );
+        mImageProxy.setBitmap( bm );
+    }
 
 
     @Override
@@ -169,22 +157,6 @@ public class MainActivity extends ActionBarActivity {
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    interface DoorImageService {
-        // http://71.236.0.176/door/camera?foo=bar
-        // asynchronously with a callback
-        @GET("/static/garage/image.jpg")
-        @Streaming
-        Response getImage() throws DoorImageServiceException;
-
-    }
-
-
-
-    class DoorImageServiceException extends Exception {
-        @Override
-        public String getMessage() {return "request timed out"; };
     }
 
 }
