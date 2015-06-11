@@ -1,13 +1,17 @@
 package org.paulrogers.android.retrofittest;
 
+import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -63,6 +67,7 @@ public class MainActivity extends FragmentActivity implements DownloadFragment.D
      * Request image download
      */
     private void doImageDownload() {
+        hideKeyboard(this, mUrlText.getWindowToken());
         mEndpoint = mUrlText.getText().toString();
         Log.d(TAG, "Downloading " + mEndpoint);
         Toast.makeText(MainActivity.this, "Starting to download", Toast.LENGTH_SHORT).show();
@@ -70,6 +75,19 @@ public class MainActivity extends FragmentActivity implements DownloadFragment.D
         mFetchButton.setEnabled( false );
         mDownloadFragment.requestDownload(mUrlText.getText().toString());
     }
+
+    /**
+     * This method is used to hide a keyboard after a user has
+     * finished typing the url.
+     */
+    public void hideKeyboard(Activity activity,
+                             IBinder windowToken) {
+        InputMethodManager mgr =
+                (InputMethodManager) activity.getSystemService
+                        (Context.INPUT_METHOD_SERVICE);
+        mgr.hideSoftInputFromWindow(windowToken, 0);
+    }
+
 
 
     /**
