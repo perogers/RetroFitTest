@@ -14,9 +14,12 @@
   ~ limitations under the License.
   -->
 
-<resources>
-    <string name="app_name">RetroFitTest</string>
-    <string name="endpoint">http://71.236.0.176</string>
-    <string name="button_label">Get Image</string>
-    <string name="action_settings">Settings</string>
-</resources>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto"
+      xmlns:tools="http://schemas.android.com/tools"
+      tools:context=".MainActivity">
+    <item android:id="@+id/action_settings"
+          android:title="@string/action_settings"
+          android:orderInCategory="100"
+          app:showAsAction="never"/>
+</menu>
